@@ -1,2 +1,2 @@
-ACTION=="REMOVE", SUBSYSTEM=="misc", KERNEL=="gpiohdmi", RUN+="echo on > /sys/d$
+ACTION=="remove", SUBSYSTEM=="misc" ,KERNEL=="gpiohdmi", RUN+="/usr/bin/sudo /home/pi/ir_send.sh"
 
