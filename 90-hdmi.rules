@@ -1,0 +1,2 @@
+ACTION=="REMOVE", SUBSYSTEM=="misc", KERNEL=="gpiohdmi", RUN+="echo on > /sys/d$
+
