@@ -44,7 +44,7 @@
 #include <linux/platform_data/bcm2708.h>
 
 #define LIRC_DRIVER_NAME "lirc_rpi_new"
-#define RBUF_LEN 256
+#define RBUF_LEN 400
 #define LIRC_TRANSMITTER_LATENCY 50
 
 #ifndef MAX_UDELAY_MS
@@ -104,19 +104,27 @@ static unsigned long space_width;
 
 
 //Default byte code
-unsigned long code_data[100]={
-2659598,9107 ,	4486,	  593,     572,     591,     573,
-591,     573,     591,     572,     591,     570,
-595,     570,     594,     568,     595,    1651,
-592,    1653,     600,    1644,     593,    1654,
-591,    1655,     591,    1654,     592,    1662,
-585,    1654,     592,     571,     594,     573,
-591,    1654,     592,     574,     591,     574,
-590,    1655,     591,     573,     592,     571,
-592,     573,     592,    1654,     592,     570,
-593,    1659,     587,    1652,     593,     573,
-591,    1655,     590,    1656,     590,    1654,
-593,   96466,    9117,	  2235,	    585};
+unsigned long code_data[150]={
+	     3502,    1744,     438,     439,     439,    1293,
+              438,     439,     438,     439,     439,     438,
+              440,     438,     439,     438,     440,     445,
+              440,     437,     440,     437,     440,     437,
+              440,     437,     439,     438,     440,    1290,
+              440,     437,     440,     445,     440,     437,
+              440,     437,     447,     429,     441,     437,
+              447,     428,     443,     434,     442,     434,
+              443,    1295,     442,     435,     442,     435,
+              442,     436,     441,    1294,     436,     435,
+              442,     435,     442,    1288,     441,     452,
+              442,     436,     441,     436,     442,     435,
+              442,     434,     443,     435,     442,     435,
+              448,     429,     442,     443,     442,    1288,
+              442,     435,     442,    1287,     442,    1289,
+              441,    1289,     441,    1295,     434,     436,
+              442,     449,     441,    1288,     442,     436,
+              442,    1289,     441,     437,     441,    1289,
+              447,    1284,     439,    1292,     440,    1293,
+              441};
 int pulse_count=0; //number of pulses
 
 //array for translation of attribute values
@@ -138,25 +146,25 @@ int receive;
 //send Function for attribute 'send'
 static ssize_t send_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-		printk("Attribute Send show");
-		//Retreive the driver data pointer from the struct device
-    struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
-    int len;
-		//Error checking of attribute read
-    len = sprintf(buf, "%s\n", names[lirc_drv_data->send]);
-    if (len <= 0)
-		{
-			//Print out error in case of invalid value of the attribute
-			printk("Invalid sprintf len: %d\n", len);
-		}
-		return len;
+	printk("Attribute Send show\n");
+	//Retreive the driver data pointer from the struct device
+        struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
+        int len;
+	//Error checking of attribute read
+        len = sprintf(buf, "%s\n", names[lirc_drv_data->send]);
+        if (len <= 0)
+	{
+		//Print out error in case of invalid value of the attribute
+		printk("Invalid sprintf len: %d\n", len);
+	}
+	return len;
 }
 
 //store function for the attribute 'send'
 static ssize_t send_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t valsize)
 {
 	char send_response[4];//Buffer to store the input attribute value
-	printk("Atrribute send store");
+	printk("Atrribute send store\n");
 	//Retreive the driver data pointer from the device struct
 	struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
 	//Checking if the input data is valid
@@ -164,11 +172,13 @@ static ssize_t send_store(struct device *dev, struct device_attribute *attr, con
 	{
 		return -EINVAL;
 	}
+	if(pulse_count==0)
+	pulse_count=115;
 	//If the input value is 'on' change the attribute value to 1 and send pulse using irsend
 	if(strcmp(send_response,"on") == 0)
 	{
 		lirc_drv_data->send=1;
-		printk("file got value, calling irsend");
+		printk("file got value, calling irsend\n");
 		irsend();
 		lirc_drv_data->send=0;
 	}
@@ -186,37 +196,38 @@ static DEVICE_ATTR(send, S_IWUSR | S_IRUGO, send_show, send_store);
 //Show function for the attribute 'receive'
 static ssize_t receive_show(struct device *dev,struct device_attribute *attr, char *buf)
 {
-		printk("Attribute receive show");
-		//Retreive the driver data pointer from the struct device
-    struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
-    int len;
-		//Error checking of attribute read
-    len = sprintf(buf, "%s\n", names[lirc_drv_data->receive]);
-    if (len <= 0)
-		{
-				//Print out error in case of invalid value of the attribute
-		    printk("Invalid sprintf len: %d\n", len);
-		}
-		return len;
+	printk("Attribute receive show\n");
+	//Retreive the driver data pointer from the struct device
+        struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
+        int len;
+	//Error checking of attribute read
+        len = sprintf(buf, "%s\n", names[lirc_drv_data->receive]);
+        if (len <= 0)
+	{
+		//Print out error in case of invalid value of the attribute
+        	 printk("Invalid sprintf len: %d\n", len);
+	}
+	return len;
 }
 
 //Store function for the attribute 'receive'
 static ssize_t receive_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t valsize)
 {
-	char receive_response[4];//Buffer to store the input attribute value
-  printk("Atrribute receive store");
+	 char receive_response[4];//Buffer to store the input attribute value
+         printk("Atrribute receive store\n");
 	//Retreive the driver data pointer from the device struct
-  struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
+         struct lirc_drv_data *lirc_drv_data = dev_get_drvdata(dev);
 	//Checking if the input data is valid
-  if(sscanf(buf, "%4s", receive_response) != 1)
-  	return -EINVAL;
+         if(sscanf(buf, "%4s", receive_response) != 1)
+  	       return -EINVAL;
 	//If the input value is 'on' change the attribute value to 1 and receive pulse using irw
-  if(strcmp(receive_response,"on") == 0)
-	{
+         if(strcmp(receive_response,"on") == 0)
+	{	
+		pulse_count=0;
 		lirc_drv_data->receive=1;
-    printk("file got value,calling ir receive");
+                printk("file got value,calling ir receive\n");
 		irw();
-		printk("Recepiton Done");
+		printk("Recepiton Done\n");
 	}
 	//If the input value is 'off' change the attribute value to 0
 	else
@@ -279,7 +290,7 @@ static int init_timing_params(unsigned int new_duty_cycle,
 	period = 1000 * 1000000L / freq;
 	pulse_width = period * duty_cycle / 100;
 	space_width = period - pulse_width;
-	dprintk("in init_timing_params, freq=%d pulse=%ld, "
+	printk("in init_timing_params, freq=%d pulse=%ld, "
 		"space=%ld\n", freq, pulse_width, space_width);
 	return 0;
 }
@@ -404,7 +415,7 @@ static irqreturn_t irq_handler(int i, void *blah, struct pt_regs *regs)
 	long deltv;
 	int data;
 	int signal;
-
+	
 	/* use the GPIO signal level */
 	signal = gpiochip->get(gpiochip, gpio_in_pin);
 
@@ -456,7 +467,7 @@ static irqreturn_t irq_handler(int i, void *blah, struct pt_regs *regs)
 
 static int is_right_chip(struct gpio_chip *chip, void *data)
 {
-	printk("is_right_chip %s %d\n", chip->label, strcmp(data, chip->label));
+	dprintk("is_right_chip %s %d\n", chip->label, strcmp(data, chip->label));
 
 	if (strcmp(data, chip->label) == 0)
 		return 1;
@@ -467,7 +478,7 @@ static inline int read_bool_property(const struct device_node *np,
 				     const char *propname,
 				     bool *out_value)
 {
-	printk("read_bool_property");
+	//printk("read_bool_property");
 	u32 value = 0;
 	int err = of_property_read_u32(np, propname, &value);
 	if (err == 0)
@@ -477,7 +488,7 @@ static inline int read_bool_property(const struct device_node *np,
 
 static void read_pin_settings(struct device_node *node)
 {
-	printk("read_pin_settings");
+	//printk("read_pin_settings");
 	u32 pin;
 	int index;
 
@@ -506,7 +517,7 @@ static void read_pin_settings(struct device_node *node)
 
 static int init_port(void)
 {
-	printk("init_port");
+	//printk("init_port");
 	int i, nlow, nhigh;
 	struct device_node *node;
 
@@ -590,7 +601,7 @@ static int init_port(void)
 // called when the character device is opened
 static int set_use_inc(void *data)
 {
-	printk("set_use_inc");
+//	printk("set_use_inc");
 	int result;
 
 	/* initialize timestamp */
@@ -625,7 +636,7 @@ static int set_use_inc(void *data)
 
 static void set_use_dec(void *data)
 {
-	printk("set_use_dec");
+//	printk("set_use_dec");
 	/* GPIO Pin Falling/Rising Edge Detect Disable */
 	irq_set_irq_type(irq_num, 0);
 	disable_irq(irq_num);
@@ -668,9 +679,9 @@ static ssize_t lirc_write(struct file *file, const char *buf,
 
 static long lirc_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
-	printk("lirc_ioctl");
-	printk("command %d",cmd);
-	printk("argument %ld",arg);
+//	printk("lirc_ioctl");
+//	printk("command %d",cmd);
+//	printk("argument %ld",arg);
 
 	int result;
 	__u32 value;
@@ -752,7 +763,7 @@ static int lirc_rpi_probe(struct platform_device *pdev)
 {
 	struct lirc_drv_data *lirc_drv_data;
 	int ret;
-	pr_info("lirc_rpi: probing %s id %d\n", pdev->name, pdev->id);
+//	pr_info("lirc_rpi: probing %s id %d\n", pdev->name, pdev->id);
 
 	lirc_drv_data = devm_kzalloc(&pdev->dev, sizeof(*lirc_drv_data), GFP_KERNEL);
     lirc_drv_data->dev = &pdev->dev;
@@ -793,7 +804,7 @@ static struct platform_driver lirc_rpi_driver = {
 
 static int __init lirc_rpi_init(void)
 {
-	printk("lirc_rpi_init");
+//	printk("lirc_rpi_init");
 	struct device_node *node;
 	int result;
 
@@ -845,7 +856,7 @@ static int __init lirc_rpi_init(void)
 
 static void lirc_rpi_exit(void)
 {
-	printk("lirc_rpi_exit");
+//	printk("lirc_rpi_exit");
 	if (!lirc_rpi_dev->dev.of_node)
 		platform_device_unregister(lirc_rpi_dev);
 	platform_driver_unregister(&lirc_rpi_driver);
@@ -871,7 +882,7 @@ void irsend(void){
 	gpiochip->set(gpiochip, gpio_out_pin, invert);
 
 	spin_unlock_irqrestore(&lock, flags);
-	printk("Transmission done");
+	printk("Transmission done\n");
 }
 
 //Used to receive pulses using the IR receiver

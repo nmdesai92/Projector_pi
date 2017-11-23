@@ -1,9 +1,3 @@
-/*
-A Loadable Linux Kernel Module (LKM) to monitor the status of HDMI connection
-on  raspberry pi.This  polls the GPIO pin 46 in raspberry pi
-and generate an uevent in case of a HDMI cable is disconnected.
-*/
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -19,10 +13,9 @@ MODULE_VERSION("0.1");
  
 static unsigned int gpiohdmi = 46;
 
-static unsigned int interval = 1; 	//Timer runs for every 1 second
+static unsigned int interval = 10; 	//Timer runs for every 10 seconds
 
-static struct timer_list checktimer;
-
+static struct timer_list blinktimer;
 static struct miscdevice gpiohdmi_dev={
 .name="gpiohdmi"
 };
@@ -31,47 +24,46 @@ static int status_pre;
 
 #define secs_to_jiffies(i)	(msecs_to_jiffies((i)*1000))
 
-
-/*Timer Callback*/
-static void check_timeout(unsigned long dummy)
+static void blink_timeout(unsigned long dummy)
 {
         int status_now;
-	status_now = gpio_get_value(gpiohdmi); 				//Get the value from GPIO 46
+	status_now = gpio_get_value(gpiohdmi); 
         if(status_now == 1 && status_pre == 0)
 	{
                 printk("HDMI disonnected\n");
-		kobject_uevent(&gpiohdmi_dev.this_device->kobj,KOBJ_REMOVE);	//Notify the user by sending uevent
+		kobject_uevent(&gpiohdmi_dev.this_device->kobj,KOBJ_REMOVE);
+		//misc_deregister(&gpiohdmi_dev);
+		//printk("Misc device is removed");
 	}
 	
         status_pre = status_now;
-	mod_timer(&checktimer, jiffies+secs_to_jiffies(interval));	//keep calling the timer 
+	mod_timer(&blinktimer, jiffies+secs_to_jiffies(interval));
 }
-
-
-/*Initialize the Module*/ 
+ 
 static int __init hdmigpio_init(void){
    int err;
-   printk(KERN_INFO "hdmi_status: Initializing the HDMI_GPIO LKM\n");
+   printk(KERN_INFO "GPIO_TEST: Initializing the GPIO_TEST LKM\n");
    // Is the GPIO a valid GPIO number 
    if (!gpio_is_valid(gpiohdmi)){
-      printk(KERN_INFO "hdmi_status: invalid GPIO PIN\n");
+      printk(KERN_INFO "GPIO_TEST: invalid LED GPIO\n");
       return -ENODEV;
    }
-   err= misc_register(&gpiohdmi_dev);					//register as a miscellaneous device
-   setup_timer(&checktimer, check_timeout, 0);
-   err = mod_timer(&checktimer, secs_to_jiffies(interval));
+   err= misc_register(&gpiohdmi_dev);
+   setup_timer(&blinktimer, blink_timeout, 0);
+   err = mod_timer(&blinktimer, secs_to_jiffies(interval));
    if (unlikely(err)) {
-	pr_err("hdmi_status: timer error %d...\n", err);
-	del_timer(&checktimer);
+	pr_err("bln: timer error %d...\n", err);
+	del_timer(&blinktimer);
         gpio_unexport(gpiohdmi);                  // Unexport the LED GPIO
         gpio_free(gpiohdmi);                      // Free the LED GPIO
         return err;
 	}
    gpio_request(gpiohdmi, "sysfs");         // gpiohdmi is hardcoded to 46, request it
    gpio_direction_input(gpiohdmi);	    // Set the gpio to be in input mode
-   gpio_export(gpiohdmi, false);             // Causes gpio46 to appear in /sys/class/gpio
-                    
-   printk(KERN_INFO "Hdmi_status: The pin state is currently: %d\n", gpio_get_value(gpiohdmi));
+   gpio_export(gpiohdmi, false);             // Causes gpio49 to appear in /sys/class/gpio
+                     // the bool argument prevents the direction from being changed
+   // Perform a quick test to see that the button is working as expected on LKM load
+   printk(KERN_INFO "GPIO_TEST: The button state is currently: %d\n", gpio_get_value(gpiohdmi));
  
    return 0;
 }
@@ -80,20 +72,22 @@ static int __init hdmigpio_init(void){
 
 static void __exit hdmigpio_exit(void){
    int err;
-   err = del_timer(&checkktimer);
+   err = del_timer(&blinktimer);
    if (err)
-        pr_err("hdmi_status: timer delete error %d...\n", err);
+        pr_err("bln: timer delete error %d...\n", err);
    misc_deregister(&gpiohdmi_dev);
 
    gpio_unexport(gpiohdmi);                  // Unexport the LED GPIO
    gpio_free(gpiohdmi);                      // Free the LED GPIO
-   err = del_timer(&checkktimer);
+   err = del_timer(&blinktimer);
    if (err)
-	pr_err("hdmi_status: timer delete error %d...\n", err);
+	pr_err("bln: timer delete error %d...\n", err);
 
-   printk(KERN_INFO "hdmi_status: Goodbye from the LKM!\n");
+   printk(KERN_INFO "GPIO_TEST: Goodbye from the LKM!\n");
 }
 
  
+/// This next calls are  mandatory -- they identify the initialization function
+/// and the cleanup function (as above).
 module_init(hdmigpio_init);
 module_exit(hdmigpio_exit);
